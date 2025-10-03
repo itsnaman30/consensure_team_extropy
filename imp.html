@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOS Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0c10;
+            color: #c5c6c7;
+        }
+        .container-bg {
+            background-color: #1f2833;
+        }
+        .text-area-bg {
+            background-color: #2c3a4d;
+            border: 1px solid #45a29e;
+        }
+        .btn-primary {
+            background-color: #6610f2;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #560ed5;
+        }
+        .btn-secondary {
+            background-color: #45a29e;
+            transition: background-color 0.3s ease;
+        }
+        .btn-secondary:hover {
+            background-color: #388a85;
+        }
+        .risk-bar {
+            background-color: #45a29e;
+        }
+        .risk-bg {
+            background-color: #2c3a4d;
+        }
+        .loading-animation {
+            border-top-color: #45a29e;
+            border-left-color: #45a29e;
+            border-bottom-color: transparent;
+            border-right-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .modal {
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        #video {
+            border-radius: 1rem;
+            max-width: 100%;
+        }
+
+        .circular-progress {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: auto;
+        }
+        .circular-progress svg {
+            transform: rotate(-90deg);
+        }
+        .circular-progress-bg {
+            fill: none;
+            stroke: #2c3a4d;
+            stroke-width: 12;
+        }
+        .circular-progress-bar {
+            fill: none;
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease-in-out;
+        }
+        .circular-progress-text {
+            fill: white;
+            font-size: 2rem;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
+        .safe .circular-progress-bar { stroke: #45a29e; }
+        .warning .circular-progress-bar { stroke: #f0c541; }
+        .unsafe .circular-progress-bar { stroke: #e31b54; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="w-full max-w-7xl rounded-2xl container-bg p-8 shadow-2xl transition-all duration-500">
+        <!-- Main Content -->
+        <div id="main-content" class="flex flex-col lg:flex-row lg:space-x-8">
+            <!-- Input Section -->
+            <div id="input-section" class="flex-1 flex flex-col items-center lg:items-start mb-8 lg:mb-0">
+                <h1 class="text-3xl font-bold mb-6 text-center text-white">TOS & Regulations Analyzer</h1>
+                <div class="w-full relative">
+                    <div class="absolute top-2 right-2 flex space-x-2">
+                        <button id="paste-btn" class="text-sm px-4 py-1.5 rounded-lg btn-secondary text-white font-medium">Paste</button>
+                        <button id="clear-btn" class="text-sm px-4 py-1.5 rounded-lg btn-secondary text-white font-medium">Clear</button>
+                    </div>
+                    <textarea id="tos-input" rows="15" class="w-full text-area-bg p-6 rounded-xl text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#45a29e] transition-colors" placeholder="Paste the agreement text below..."></textarea>
+                </div>
+                
+                <div class="flex flex-col sm:flex-row mt-4 space-y-4 sm:space-y-0 sm:space-x-4 w-full">
+                    <button id="upload-btn" class="px-6 py-3 rounded-full btn-secondary text-white font-semibold flex-1">Upload Photo</button>
+                    <button id="take-photo-btn" class="px-6 py-3 rounded-full btn-secondary text-white font-semibold flex-1">Take Photo</button>
+                </div>
+                <input type="file" id="file-input" accept="image/*" class="hidden">
+                
+                <button id="analyze-btn" class="mt-8 px-12 py-4 text-lg font-semibold rounded-full btn-primary text-white w-full max-w-md shadow-lg shadow-purple-600/50">
+                    Analyze
+                </button>
+            </div>
+    
+            <!-- Results Section -->
+            <div id="results-section" class="flex-1 flex-col space-y-6 hidden">
+                <div id="translation-section" class="container-bg p-6 rounded-2xl hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-xl font-bold text-white">Translation</h2>
+                        <button id="translate-btn" class="text-white px-4 py-1.5 rounded-lg btn-secondary text-sm">Translate to English</button>
+                    </div>
+                    <p id="translated-text" class="text-gray-300 text-sm leading-relaxed mt-2"></p>
+                </div>
+                <div class="lg:col-span-2">
+                    <div class="container-bg p-6 rounded-2xl">
+                        <h2 class="text-xl font-bold mb-4 text-white">All Risk Scores</h2>
+                        <div id="risk-scores" class="space-y-4">
+                            <!-- Risk scores will be injected here by JS -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="container-bg p-6 rounded-2xl flex-grow flex flex-col">
+                    <h2 class="text-xl font-bold mb-4 text-white">Summary</h2>
+                    <p id="summary" class="text-gray-300 text-sm leading-relaxed"></p>
+                </div>
+                
+                <div class="container-bg p-6 rounded-2xl flex-grow flex flex-col">
+                    <h2 class="text-xl font-bold mb-4 text-white">Aggressive Language</h2>
+                    <ul id="aggressive-language" class="list-disc list-inside space-y-1 text-sm text-gray-300"></ul>
+                </div>
+    
+                <div class="container-bg p-6 rounded-2xl flex-grow flex flex-col">
+                    <h2 class="text-xl font-bold mb-4 text-white">Suspicious Clauses</h2>
+                    <ul id="suspicious-clauses" class="space-y-4">
+                        <!-- Suspicious clauses will be injected here by JS -->
+                    </ul>
+                </div>
+                
+                <!-- New overall percentage section -->
+                <div id="safety-score-section" class="container-bg p-6 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <h2 class="text-xl font-bold text-white mb-6">Overall Safety Score</h2>
+                    <div class="circular-progress">
+                        <svg viewBox="0 0 36 36">
+                            <circle class="circular-progress-bg" cx="18" cy="18" r="16"></circle>
+                            <circle class="circular-progress-bar" cx="18" cy="18" r="16" stroke-dasharray="100" stroke-dashoffset="100"></circle>
+                        </svg>
+                        <span id="safety-percentage-text" class="absolute inset-0 flex items-center justify-center text-3xl font-bold"></span>
+                    </div>
+                    <p id="safety-status" class="mt-4 text-white text-lg font-medium"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Camera Modal -->
+        <div id="camera-modal" class="modal fixed inset-0 z-50 flex items-center justify-center hidden">
+            <div class="bg-gray-800 rounded-2xl p-6 relative w-11/12 max-w-2xl text-center">
+                <h2 class="text-xl font-bold mb-4 text-white">Take a Photo</h2>
+                <video id="video" autoplay class="rounded-xl w-full h-auto"></video>
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="capture-btn" class="px-8 py-3 rounded-full btn-primary text-white font-semibold">Capture</button>
+                    <button id="close-camera-btn" class="px-8 py-3 rounded-full btn-secondary text-white font-semibold">Close</button>
+                </div>
+            </div>
+        </div>
+        <canvas id="canvas" class="hidden"></canvas>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="fixed inset-0 z-50 flex flex-col items-center justify-center hidden modal">
+            <div class="loading-animation w-16 h-16 rounded-full border-4"></div>
+            <p id="loading-text" class="mt-4 text-xl text-white">Analyzing, please wait...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        // Global variables for Firebase configuration (unused in this version)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // API Key for the Gemini API call
+        const apiKey = "AIzaSyDHoNL-qwUN8CDu-U7KPrpqBpYfvKG-FVg";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        // DOM Elements
+        const app = document.getElementById('app');
+        const mainContent = document.getElementById('main-content');
+        const inputSection = document.getElementById('input-section');
+        const loadingState = document.getElementById('loading-state');
+        const resultsSection = document.getElementById('results-section');
+        const tosInput = document.getElementById('tos-input');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const pasteBtn = document.getElementById('paste-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
+        const takePhotoBtn = document.getElementById('take-photo-btn');
+        const cameraModal = document.getElementById('camera-modal');
+        const videoElement = document.getElementById('video');
+        const canvasElement = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const closeCameraBtn = document.getElementById('close-camera-btn');
+        const riskScoresContainer = document.getElementById('risk-scores');
+        const summaryElement = document.getElementById('summary');
+        const aggressiveLanguageList = document.getElementById('aggressive-language');
+        const suspiciousClausesList = document.getElementById('suspicious-clauses');
+        const loadingText = document.getElementById('loading-text');
+        const translationSection = document.getElementById('translation-section');
+        const translateBtn = document.getElementById('translate-btn');
+        const translatedTextElement = document.getElementById('translated-text');
+        const safetyScoreSection = document.getElementById('safety-score-section');
+        const safetyPercentageText = document.getElementById('safety-percentage-text');
+        const safetyStatus = document.getElementById('safety-status');
+        const safetyProgressBar = document.querySelector('.circular-progress-bar');
+
+        let videoStream = null;
+
+        // Function to show/hide sections
+        const showSection = (section, message = "") => {
+            mainContent.classList.add('hidden');
+            loadingState.classList.add('hidden');
+            cameraModal.classList.add('hidden');
+            
+            if (section === 'input') {
+                mainContent.classList.remove('hidden');
+                resultsSection.classList.add('hidden');
+                inputSection.classList.remove('lg:w-full');
+            } else if (section === 'loading') {
+                loadingState.classList.remove('hidden');
+                loadingText.textContent = message;
+            } else if (section === 'results') {
+                mainContent.classList.remove('hidden');
+                resultsSection.classList.remove('hidden');
+                inputSection.classList.add('lg:w-full');
+            } else if (section === 'camera') {
+                cameraModal.classList.remove('hidden');
+            }
+        };
+
+        const translateToEnglish = async (text) => {
+            loadingText.textContent = "Translating text...";
+            showSection('loading');
+            
+            const payload = {
+                contents: [{
+                    parts: [{ text: `Translate the following text to English:\n\n${text}` }]
+                }],
+                generationConfig: {
+                    responseMimeType: "text/plain"
+                }
+            };
+
+            let retries = 0;
+            const maxRetries = 5;
+            const baseDelay = 1000;
+
+            while(retries < maxRetries) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429) {
+                        const delay = baseDelay * Math.pow(2, retries);
+                        await new Promise(res => setTimeout(res, delay));
+                        retries++;
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API error: ${response.status} - ${JSON.stringify(errorData)}`);
+                    }
+
+                    const result = await response.json();
+                    const translatedText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    translatedTextElement.textContent = translatedText;
+                    translationSection.classList.remove('hidden');
+                    showSection('results');
+                    return;
+                } catch(error) {
+                    console.error('Error translating text:', error);
+                    retries++;
+                    if (retries >= maxRetries) {
+                        console.error('Maximum retries reached. Failed to translate.');
+                        showSection('results');
+                    }
+                }
+            }
+        };
+
+        const detectLanguageAndAnalyze = async (text) => {
+            loadingText.textContent = "Detecting language...";
+            showSection('loading');
+            
+            const langPayload = {
+                contents: [{
+                    parts: [{ text: `Identify the language of the following text and return only the ISO 639-1 code (e.g., "en" for English, "es" for Spanish) in a JSON object with a single 'lang' field. If it's a mix, return the dominant language. Text: ${text}` }]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
+            };
+            
+            let langResponse = null;
+            let langRetries = 0;
+            while(langRetries < 5) {
+                try {
+                    langResponse = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(langPayload)
+                    });
+                    if (langResponse.ok) break;
+                    if (langResponse.status === 429) {
+                        const delay = 1000 * Math.pow(2, langRetries);
+                        await new Promise(res => setTimeout(res, delay));
+                        langRetries++;
+                        continue;
+                    }
+                    throw new Error("Language detection failed.");
+                } catch (error) {
+                    langRetries++;
+                    console.error("Language detection error: ", error);
+                }
+            }
+
+            if (langResponse && langResponse.ok) {
+                const langResult = await langResponse.json();
+                const langCode = JSON.parse(langResult?.candidates?.[0]?.content?.parts?.[0]?.text)?.lang;
+                if (langCode && langCode !== 'en') {
+                    translateBtn.onclick = () => translateToEnglish(text);
+                    translationSection.classList.remove('hidden');
+                } else {
+                    translationSection.classList.add('hidden');
+                }
+            }
+
+            loadingText.textContent = "Analyzing document...";
+            
+            // Re-use the existing analysis logic
+            const systemPrompt = `You are a legal document analyst. Your task is to analyze a given Terms of Service (TOS) document and provide a structured JSON response.
+
+            The analysis should contain:
+            1.  A concise 'summary' of the document's main points.
+            2.  A 'riskScores' array of objects, each with a 'name', an integer 'score' from 1 to 5 (1 being low risk, 5 being high risk), and a short 'description'. The categories are:
+                -   "Privacy": How user data is collected, used, and shared.
+                -   "Data Sharing": If data is shared with third parties for advertising or research.
+                -   "Cancellation": Ease of account deletion and data retention after cancellation.
+                -   "User Rights": User ownership of content vs. granted licenses to the service.
+                -   "Amendments": How the company can change the terms.
+                -   "Clarity": How complex or filled with legal jargon the language is.
+            3.  An 'aggressiveLanguage' array of up to 10 specific keywords or phrases from the document that are considered aggressive or one-sided.
+            4.  A 'suspiciousClauses' array of objects, each with a 'name' (e.g., "Vague data retention") and the exact 'text' of the problematic clause from the document.
+            
+            The output must be a single, valid JSON object, and nothing else.`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: text }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "summary": { "type": "STRING" },
+                            "riskScores": {
+                                "type": "ARRAY",
+                                "items": {
+                                    "type": "OBJECT",
+                                    "properties": {
+                                        "name": { "type": "STRING" },
+                                        "score": { "type": "NUMBER" },
+                                        "description": { "type": "STRING" }
+                                    },
+                                    "required": ["name", "score", "description"]
+                                }
+                            },
+                            "aggressiveLanguage": {
+                                "type": "ARRAY",
+                                "items": { "type": "STRING" }
+                            },
+                            "suspiciousClauses": {
+                                "type": "ARRAY",
+                                "items": {
+                                    "type": "OBJECT",
+                                    "properties": {
+                                        "name": { "type": "STRING" },
+                                        "text": { "type": "STRING" }
+                                    },
+                                    "required": ["name", "text"]
+                                }
+                            }
+                        },
+                        "required": ["summary", "riskScores", "aggressiveLanguage", "suspiciousClauses"]
+                    }
+                },
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+            
+            let analyzeRetries = 0;
+            while(analyzeRetries < 5) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (response.status === 429) {
+                        const delay = 1000 * Math.pow(2, analyzeRetries);
+                        await new Promise(res => setTimeout(res, delay));
+                        analyzeRetries++;
+                        continue;
+                    }
+                    
+                    if (!response.ok) throw new Error("Analysis failed.");
+                    
+                    const result = await response.json();
+                    const jsonString = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    const parsedData = JSON.parse(jsonString);
+                    
+                    renderResults(parsedData);
+                    showSection('results');
+                    return;
+                } catch(error) {
+                    console.error("Analysis error: ", error);
+                    analyzeRetries++;
+                    if(analyzeRetries >= 5) {
+                         // In a real app, this should be a modal
+                        console.error("Failed to analyze after multiple retries.");
+                        showSection('input');
+                    }
+                }
+            }
+        };
+
+        // Function to process an image and extract text using AI
+        const processImageForText = async (base64Data, mimeType) => {
+            loadingText.textContent = "Extracting text from image...";
+            showSection('loading');
+            
+            const payload = {
+                contents: [{
+                    parts: [
+                        { text: "Extract all text from the image. Return a JSON object with a single 'text' field, e.g., { 'text': 'extracted text here' }." },
+                        { inlineData: { mimeType: mimeType, data: base64Data } }
+                    ]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json"
+                },
+            };
+
+            let retries = 0;
+            const maxRetries = 5;
+            const baseDelay = 1000;
+
+            while (retries < maxRetries) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429) {
+                        const delay = baseDelay * Math.pow(2, retries);
+                        console.log(`Rate limit exceeded. Retrying in ${delay / 1000}s...`);
+                        await new Promise(res => setTimeout(res, delay));
+                        retries++;
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API error: ${response.status} - ${JSON.stringify(errorData)}`);
+                    }
+
+                    const result = await response.json();
+                    const jsonString = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    const parsedData = JSON.parse(jsonString);
+                    tosInput.value = parsedData.text;
+                    showSection('input');
+                    return;
+                } catch (error) {
+                    console.error('Error during image analysis:', error);
+                    retries++;
+                    if (retries >= maxRetries) {
+                        console.error('Maximum retries reached. Failed to get analysis.');
+                        showSection('input');
+                    }
+                }
+            }
+        };
+
+        // Event Listeners
+        pasteBtn.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                tosInput.value = text;
+            } catch (err) {
+                console.error('Failed to read clipboard contents: ', err);
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            tosInput.value = '';
+            showSection('input');
+        });
+        
+        // --- New Image/Camera Functionality ---
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64Data = e.target.result.split(',')[1];
+                    processImageForText(base64Data, file.type);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        takePhotoBtn.addEventListener('click', async () => {
+            showSection('camera');
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                videoElement.srcObject = videoStream;
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                // In a real app, you would show a user-friendly error message here
+                showSection('input');
+            }
+        });
+
+        captureBtn.addEventListener('click', () => {
+            const context = canvasElement.getContext('2d');
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            
+            const base64Data = canvasElement.toDataURL('image/png').split(',')[1];
+            
+            // Stop video stream
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+
+            processImageForText(base64Data, 'image/png');
+        });
+
+        closeCameraBtn.addEventListener('click', () => {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            showSection('input');
+        });
+
+        // --- Original Analyze Functionality ---
+        analyzeBtn.addEventListener('click', async () => {
+            const tosText = tosInput.value.trim();
+            if (tosText === '') {
+                console.warn('Please enter some text to analyze.');
+                return;
+            }
+            
+            detectLanguageAndAnalyze(tosText);
+        });
+
+        function renderResults(data) {
+            // Render Risk Scores
+            riskScoresContainer.innerHTML = '';
+            let totalRiskScore = 0;
+            data.riskScores.forEach(item => {
+                const score = Math.max(0, Math.min(5, item.score));
+                totalRiskScore += score;
+                const barWidth = (score / 5) * 100;
+                riskScoresContainer.innerHTML += `
+                    <div>
+                        <h3 class="text-white text-md font-medium mb-1">${item.name}</h3>
+                        <div class="flex items-center space-x-4">
+                            <div class="risk-bg w-full rounded-full h-2">
+                                <div class="risk-bar h-2 rounded-full" style="width: ${barWidth}%;"></div>
+                            </div>
+                            <span class="text-gray-400 text-sm">${score}/5</span>
+                        </div>
+                        <p class="text-gray-400 text-xs mt-2">${item.description}</p>
+                    </div>
+                `;
+            });
+
+            // Calculate overall safety percentage
+            const avgRiskScore = data.riskScores.length > 0 ? totalRiskScore / data.riskScores.length : 0;
+            const safetyPercentage = Math.round((1 - (avgRiskScore / 5)) * 100);
+            
+            safetyPercentageText.textContent = `${safetyPercentage}%`;
+            
+            // Set circle color and text based on percentage
+            let statusClass = '';
+            let statusText = '';
+            if (safetyPercentage >= 60) {
+                statusClass = 'safe';
+                statusText = 'Safe';
+            } else if (safetyPercentage >= 30) {
+                statusClass = 'warning';
+                statusText = 'Potentially Unsafe';
+            } else {
+                statusClass = 'unsafe';
+                statusText = 'Unsafe';
+            }
+            
+            safetyScoreSection.className = `container-bg p-6 rounded-2xl flex flex-col items-center justify-center text-center ${statusClass}`;
+            safetyStatus.textContent = statusText;
+
+            // Animate the progress bar
+            const circumference = 2 * Math.PI * 16;
+            const offset = circumference * (1 - (safetyPercentage / 100));
+            safetyProgressBar.style.strokeDasharray = circumference;
+            safetyProgressBar.style.strokeDashoffset = offset;
+            
+            // Render Summary
+            summaryElement.textContent = data.summary;
+
+            // Render Aggressive Language
+            aggressiveLanguageList.innerHTML = '';
+            data.aggressiveLanguage.forEach(phrase => {
+                aggressiveLanguageList.innerHTML += `<li>${phrase}</li>`;
+            });
+
+            // Render Suspicious Clauses
+            suspiciousClausesList.innerHTML = '';
+            data.suspiciousClauses.forEach(clause => {
+                suspiciousClausesList.innerHTML += `
+                    <li class="flex items-start space-x-3">
+                        <i class="fas fa-exclamation-triangle text-yellow-400 mt-1"></i>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-white">${clause.name}</h4>
+                            <p class="text-gray-300 text-sm leading-relaxed">${clause.text}</p>
+                        </div>
+                    </li>
+                `;
+            });
+        }
+
+    </script>
+</body>
+</html>
+
