@@ -1,0 +1,47 @@
+
+## ⚖️ TOS & Regulations Analyzer
+
+The **TOS & Regulations Analyzer** is a Flask-based web application designed to quickly process and analyze lengthy legal documents like Terms of Service (TOS) and Privacy Policies using modern Machine Learning and OCR techniques.
+
+### ✨ Key Features
+
+  * **AI Summarization:** Generates a concise, abstractive summary of the legal text using a specialized Hugging Face **DistilBart model** (`ml6team/distilbart-tos-summarizer-tosdr`), making complex terms readable.
+  * **Risk Assessment:** Provides a quick-view safety score and categorized risk scores (e.g., Privacy, User Rights) based on analysis heuristics.
+  * **Aggressive Language & Clauses:** Highlights suspicious wording and problematic clauses detected in the text.
+  * **Optical Character Recognition (OCR):** Allows users to input text by uploading an image or taking a photo (via a webcam) using **Tesseract** to extract the text.
+
+-----
+
+## 🛠️ Technology Stack
+
+| Component | Purpose |
+| :--- | :--- |
+| **Backend** | Python, Flask |
+| **Summarization** | `transformers` (DistilBart), `sumy` (LSA) |
+| **OCR** | `pytesseract`, PIL (Pillow) |
+| **Frontend** | HTML, Tailwind CSS, JavaScript |
+
+-----
+
+## 🏃 Local Setup (General)
+
+To run this application locally, you'll need Python, Tesseract, and the required Python libraries.
+
+1.  **Install Tesseract OCR:** Tesseract must be installed on your operating system and added to your system's PATH.
+2.  **Clone the Repository:**
+    ```bash
+    git clone https://github.com/YourUsername/TOS-Analyzer.git
+    cd TOS-Analyzer
+    ```
+3.  **Install Python Dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+    *(Assuming you have created a `requirements.txt` with all imported libraries: `Flask, nltk, sumy, transformers, pillow, pytesseract`)*
+4.  **Run the Flask Application:**
+    ```bash
+    python app.py
+    ```
+5.  Open your browser and navigate to `http://127.0.0.1:5000`.
+
+*(**Note:** This general instruction assumes the core logic has been separated into `app.py` and the HTML into `templates/index.html` as is standard practice for Flask.)*
